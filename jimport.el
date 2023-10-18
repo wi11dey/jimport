@@ -113,10 +113,8 @@
       (puthash "Void" t set)
       set)))
 
-(defvar jimport--default-imports (make-hash-table :test #'equal))
-
 (defun jimport--imports ()
-  (let ((imports (copy-hash-table jimport--default-imports)))
+  (let ((imports (copy-hash-table (make-hash-table :test #'equal))))
     (save-excursion
       (without-restriction
 	(goto-char (point-min))
