@@ -127,7 +127,9 @@
     imports))
 
 (defun jimport--yank-handler (string-and-buffer)
-  (when (derived-mode-p 'java-mode)
+  (when (and (derived-mode-p 'java-mode)
+	     (not (eq (cdr string-and-buffer)
+		      (current-buffer))))
     (let ((start (point))
 	  end
 	  (our-imports (jimport--imports))
