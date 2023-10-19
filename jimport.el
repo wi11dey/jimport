@@ -176,7 +176,7 @@
 					     (delete-region start end)
 					     (delete-region imported-start imported-end))))))))))))
 
-;; TODO: don't add yank-handler on template args
+;; TODO: don't add yank-handler on template args or comments
 (defun jimport--filter-buffer-substring (substring)
   (if (derived-mode-p 'java-mode)
       (propertize substring 'yank-handler (list #'jimport--yank-handler
