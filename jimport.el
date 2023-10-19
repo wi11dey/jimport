@@ -26,7 +26,7 @@
 
 ;;; Code:
 
-(defsubst jimport--match-string-no-properties (num)
+(defun jimport--match-string-no-properties (num)
   (when (match-beginning num)
     (buffer-substring-no-properties (match-beginning num)
 				    (match-end       num))))
@@ -157,18 +157,24 @@
 		  (when import
 		    (push import imported))))
 	      (without-restriction
-		(when (re-search-backward jimport--header-regexp nil t)
-		  (let ((imported-start (match-end 0))
-			imported-end)
-		    (goto-char imported-start)
-		    (dolist (import imported)
-		      (newline)
-		      (insert "import " import ";"))
-		    (setq imported-end (point))
-		    (setq yank-undo-function (lambda (start end)
-					       (delete-region start end)
-					       (delete-region imported-start imported-end)))))))))))))
+		(if (re-search-backward jimport--header-regexp nil :noerror)
+		    (progn
+		      (goto-char (match-end 0))
+		      (newline))
+		  (forward-comment (buffer-size))
+		  (open-line 2))
+		(let ((imported-start (point))
+		      imported-end)
+		  (insert (mapconcat (lambda (import)
+				       (concat "import " import ";"))
+				     imported
+				     "\n"))
+		  (setq imported-end (point)
+			yank-undo-function (lambda (start end)
+					     (delete-region start end)
+					     (delete-region imported-start imported-end))))))))))))
 
+;; TODO: don't add yank-handler on template args
 (defun jimport--filter-buffer-substring (substring)
   (if (derived-mode-p 'java-mode)
       (propertize substring 'yank-handler (list #'jimport--yank-handler
