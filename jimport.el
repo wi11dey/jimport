@@ -160,6 +160,8 @@
 		(if (re-search-backward jimport--header-regexp nil :noerror)
 		    (progn
 		      (goto-char (match-end 0))
+		      (unless (match-beginning 1)
+			(newline))
 		      (newline))
 		  (forward-comment (buffer-size))
 		  (open-line 2))
