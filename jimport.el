@@ -156,25 +156,26 @@
 					   (concat their-package "." symbol))))))))
 		  (when import
 		    (push import imported))))
-	      (without-restriction
-		(if (re-search-backward jimport--header-regexp nil :noerror)
-		    (progn
-		      (goto-char (match-end 0))
-		      (unless (match-beginning 1)
+	      (when imported
+		(without-restriction
+		  (if (re-search-backward jimport--header-regexp nil :noerror)
+		      (progn
+			(goto-char (match-end 0))
+			(unless (match-beginning 1)
+			  (newline))
 			(newline))
-		      (newline))
-		  (forward-comment (buffer-size))
-		  (open-line 2))
-		(let ((imported-start (point))
-		      imported-end)
-		  (insert (mapconcat (lambda (import)
-				       (concat "import " import ";"))
-				     imported
-				     "\n"))
-		  (setq imported-end (point)
-			yank-undo-function (lambda (start end)
-					     (delete-region start end)
-					     (delete-region imported-start imported-end))))))))))))
+		    (forward-comment (buffer-size))
+		    (open-line 2))
+		  (let ((imported-start (point))
+			imported-end)
+		    (insert (mapconcat (lambda (import)
+					 (concat "import " import ";"))
+				       imported
+				       "\n"))
+		    (setq imported-end (point)
+			  yank-undo-function (lambda (start end)
+					       (delete-region start end)
+					       (delete-region imported-start imported-end)))))))))))))
 
 ;; TODO: don't add yank-handler on template args or comments
 (defun jimport--filter-buffer-substring (substring)
