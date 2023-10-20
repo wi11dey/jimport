@@ -141,7 +141,15 @@
 	  (save-excursion
 	    (save-match-data
 	      (goto-char start)
-	      (while (re-search-forward (rx (1+ word)) end t)
+	      (while (re-search-forward (rx-let ((identifier (any (?A . ?Z)
+								  (?a . ?z)
+								  (?0 . ?9)
+								  ?$
+								  ?_)))
+					  (rx (intersection identifier (not (?0 . ?9)))
+					      (0+ identifier)))
+					end
+					t)
 		(let* ((symbol (jimport--match-string-no-properties 0))
 		       (import (or (gethash symbol their-imports)
 				   (unless (or (gethash symbol jimport--ignore)
@@ -152,7 +160,7 @@
 					     (their-package (gethash nil their-imports)))
 					 (when (and their-package
 						    (not (equal our-package their-package))
-						    (looking-at (rx (in (?A . ?Z)))))
+						    (looking-at (rx (any (?A . ?Z)))))
 					   (concat their-package "." symbol))))))))
 		  (when import
 		    (push import imported))))
