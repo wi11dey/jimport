@@ -152,7 +152,7 @@
 					t)
 		(save-excursion
 		  (goto-char (match-beginning 0))
-		  (unless (eq (preceding-char) ?.)
+		  (unless (eq (preceding-char) ?.) ; Qualified name.
 		    (let* ((symbol (jimport--match-string-no-properties 0))
 			   (import (or (gethash symbol their-imports)
 				       (unless (or (gethash symbol jimport--ignore)
