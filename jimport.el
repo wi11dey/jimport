@@ -146,24 +146,25 @@
 								  (?0 . ?9)
 								  ?$
 								  ?_)))
-					  (rx (intersection identifier (not (?0 . ?9)))
+					  (rx (intersection identifier (not (any (?0 . ?9))))
 					      (0+ identifier)))
 					end
 					t)
-		(let* ((symbol (jimport--match-string-no-properties 0))
-		       (import (or (gethash symbol their-imports)
-				   (unless (or (gethash symbol jimport--ignore)
-					       (gethash symbol our-imports))
-				     (save-excursion
-				       (goto-char (match-beginning 0))
-				       (let ((our-package   (gethash nil our-imports))
-					     (their-package (gethash nil their-imports)))
-					 (when (and their-package
-						    (not (equal our-package their-package))
-						    (looking-at (rx (any (?A . ?Z)))))
-					   (concat their-package "." symbol))))))))
-		  (when import
-		    (push import imported))))
+		(save-excursion
+		  (goto-char (match-beginning 0))
+		  (unless (eq (preceding-char) ?.)
+		    (let* ((symbol (jimport--match-string-no-properties 0))
+			   (import (or (gethash symbol their-imports)
+				       (unless (or (gethash symbol jimport--ignore)
+						   (gethash symbol our-imports))
+					 (let ((our-package   (gethash nil our-imports))
+					       (their-package (gethash nil their-imports)))
+					   (when (and their-package
+						      (not (equal our-package their-package))
+						      (looking-at-p (rx (any (?A . ?Z)))))
+					     (concat their-package "." symbol)))))))
+		      (when import
+			(push import imported))))))
 	      (when imported
 		(without-restriction
 		  (if (re-search-backward jimport--header-regexp nil :noerror)
