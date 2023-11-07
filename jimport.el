@@ -26,6 +26,8 @@
 
 ;;; Code:
 
+(require 'syntax)
+
 (defun jimport--match-string-no-properties (num)
   (when (match-beginning num)
     (buffer-substring-no-properties (match-beginning num)
@@ -152,7 +154,8 @@
 					t)
 		(save-excursion
 		  (goto-char (match-beginning 0))
-		  (unless (eq (preceding-char) ?.) ; Qualified name.
+		  (unless (or (eq (preceding-char) ?.) ; Qualified name.
+			      (nth 8 (syntax-ppss)))
 		    (let* ((symbol (jimport--match-string-no-properties 0))
 			   (import (or (gethash symbol their-imports)
 				       (unless (or (gethash symbol jimport--ignore)
