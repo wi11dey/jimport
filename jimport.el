@@ -140,7 +140,7 @@
 	      (their-imports (with-current-buffer (cdr string-and-buffer)
 			       (jimport--imports)))
 	      (case-fold-search nil)
-	      imported)
+	      (imported (make-hash-table :test #'equal)))
 	  (save-excursion
 	    (save-match-data
 	      (goto-char start)
@@ -168,23 +168,22 @@
 						      (looking-at-p (rx (any (?A . ?Z)))))
 					     (concat their-package "." symbol)))))))
 		      (when import
-			(push import imported))))))
-	      (when imported
+			(puthash import t imported))))))
+	      (when (> (hash-table-count imported) 0)
 		(without-restriction
-		  (if (re-search-backward jimport--header-regexp nil :noerror)
-		      (progn
-			(goto-char (match-end 0))
-			(unless (match-beginning 1)
-			  (newline))
-			(newline))
-		    (forward-comment (buffer-size))
-		    (open-line 2))
 		  (let ((imported-start (point))
 			imported-end)
-		    (insert (mapconcat (lambda (import)
-					 (concat "import " import ";"))
-				       imported
-				       "\n"))
+		    (if (re-search-backward jimport--header-regexp nil :noerror)
+			(progn
+			  (goto-char (match-end 0))
+			  (unless (match-beginning 1)
+			    (newline)))
+		      (forward-comment (buffer-size))
+		      (open-line 2))
+		    (maphash (lambda (import _value)
+			       (newline)
+			       (insert "import " import ";"))
+			     imported)
 		    (setq imported-end (point)
 			  yank-undo-function (lambda (start end)
 					       (delete-region start end)
