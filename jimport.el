@@ -158,15 +158,15 @@
 		  (unless (or (eq (preceding-char) ?.) ; Qualified name.
 			      (nth 8 (syntax-ppss)))
 		    (let* ((symbol (jimport--match-string-no-properties 0))
-			   (import (or (gethash symbol their-imports)
-				       (unless (or (gethash symbol jimport--ignore)
-						   (gethash symbol our-imports))
-					 (let ((our-package   (gethash nil our-imports))
-					       (their-package (gethash nil their-imports)))
-					   (when (and their-package
-						      (not (equal our-package their-package))
-						      (looking-at-p (rx (any (?A . ?Z)))))
-					     (concat their-package "." symbol)))))))
+			   (import (unless (gethash symbol our-imports)
+				     (or (gethash symbol their-imports)
+					 (unless (gethash symbol jimport--ignore)
+					   (let ((our-package   (gethash nil our-imports))
+						 (their-package (gethash nil their-imports)))
+					     (when (and their-package
+							(not (equal our-package their-package))
+							(looking-at-p (rx (any (?A . ?Z)))))
+					       (concat their-package "." symbol))))))))
 		      (when import
 			(puthash import t imported))))))
 	      (when (> (hash-table-count imported) 0)
