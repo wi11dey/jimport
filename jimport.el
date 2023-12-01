@@ -33,7 +33,7 @@
     (buffer-substring-no-properties (match-beginning num)
 				    (match-end       num))))
 
-(defvar jimport--header-regexp
+(defvar jimport--import-regexp
   (rx word-start
       (or "package"
 	  (group-n 1 "import"))
@@ -122,7 +122,7 @@
       (without-restriction
 	(goto-char (point-min))
 	(save-match-data
-	  (while (re-search-forward jimport--header-regexp nil t)
+	  (while (re-search-forward jimport--import-regexp nil t)
 	    (puthash (and (match-beginning 1)
 			  (jimport--match-string-no-properties 3))
 		     (jimport--match-string-no-properties 2)
@@ -188,7 +188,7 @@
 		(without-restriction
 		  (let ((imported-start (point))
 			imported-end)
-		    (if (re-search-backward jimport--header-regexp nil :noerror)
+		    (if (re-search-backward jimport--import-regexp nil :noerror)
 			(progn
 			  (goto-char (match-end 0))
 			  (unless (match-beginning 1)
@@ -212,7 +212,7 @@
     substring))
 
 (define-minor-mode jimport-mode
-  ""
+  "Minor mode which yanks necessary imports as well when you yank code between `java-mode' buffers."
   :global t
   :lighter " import"
   :group 'c
@@ -221,6 +221,82 @@
   ;;;; Construction
   (when jimport-mode
     (add-function :filter-return filter-buffer-substring-function #'jimport--filter-buffer-substring)))
+
+
+
+(defun jimport--get-current-header ()
+  (save-excursion
+    (without-restriction
+      (goto-char (point-min))
+      (forward-comment (buffer-size))
+      (save-match-data
+	(when (and (looking-at jimport--import-regexp)
+		   (not (match-beginning 1)) ; Package declaration.
+		   )
+	  (goto-char (match-end 0))))
+      (forward-comment (buffer-size))
+      (let ((header (buffer-substring (point-min) (point))))
+	(unless (string-blank-p header)
+	  header)))))
+
+(defcustom jimport-root-packages
+  '("com"
+    "org"
+    "net"
+    "edu"
+    "gov"
+    "mil")
+  ""
+  :type '(repeat string))
+
+(defun jimport-guess-header ()
+  "Try to intelligently guess the header of the current file using the following strategy:
+
+1) First, look at other Java files in the current directory to deduce the header.
+2) If that fails, look through the path components of the current file to find common root packages (given by `jimport-root-packages', which see).
+3) Return nil."
+  (let ((current-file-name (file-name-nondirectory (buffer-file-name))))
+    (with-temp-buffer
+      (java-mode)
+      (named-let check-other-files ((files (directory-files default-directory
+							    nil
+							    (rx ?. "java" string-end))))
+	(if (consp files)
+	    (or (unless (equal (car files) current-file-name)
+		  (ignore-errors
+		    (insert-file-contents (car files) :visit nil nil :replace)
+		    (jimport--get-current-header)))
+		(check-other-files (cdr files)))
+	  (named-let descend ((components (file-name-split current-file-name)))
+	    (cond
+	     ((not components)
+	      nil)
+	     ((member (car components)
+		      )
+	      (concat "package "
+		      (string-join components ".")
+		      ";\n\n"))
+	     (t
+	      (descend (cdr components))))))))))
+
+(define-minor-mode jimport--auto-package-mode
+  "Minor mode to intelligently add package declarations and headers to the newly created `java-mode' files based on other files in the same directory."
+  :lighter nil
+  (when (and jimport--auto-package-mode
+	     (derived-mode-p 'java-mode)
+	     (not (file-exists-p (buffer-file-name)))
+	     (not (jimport--get-current-header)))
+    (save-excursion
+      (without-restriction
+	(goto-char (point-min))
+	(let ((header (jimport-guess-header)))
+	  (when header
+	    (skip-chars-forward " \t\n")
+	    (delete-region (point-min) (point))
+	    (insert header)))))))
+
+(define-global-minor-mode jimport-auto-package-mode jimport--auto-package-mode jimport--auto-package-mode
+  :predicate '(java-mode))
 
 (provide 'jimport)
 
