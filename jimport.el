@@ -137,7 +137,9 @@
       (setq end (point))
       (unless (or (eq (cdr string-and-buffer) (current-buffer))
 		  (minibufferp))
-	(let ((our-imports (jimport--imports))
+	(let (;; Current file:
+	      (our-imports (jimport--imports))
+	      ;; File being yanked from:
 	      (their-imports (with-current-buffer (cdr string-and-buffer)
 			       (jimport--imports)))
 	      (case-fold-search nil)
@@ -159,15 +161,27 @@
 		  (unless (or (eq (preceding-char) ?.) ; Qualified name.
 			      (nth 8 (syntax-ppss)))
 		    (let* ((symbol (jimport--match-string-no-properties 0))
-			   (import (unless (gethash symbol our-imports)
-				     (or (gethash symbol their-imports)
-					 (unless (gethash symbol jimport--ignore)
-					   (let ((our-package   (gethash nil our-imports))
-						 (their-package (gethash nil their-imports)))
-					     (when (and their-package
-							(not (equal our-package their-package))
-							(looking-at-p (rx (any (?A . ?Z)))))
-					       (concat their-package "." symbol))))))))
+			   (our-import   (gethash symbol our-imports))
+			   (their-import (gethash symbol their-imports))
+			   (import (cond
+				    ((not their-import)
+				     ;; Assume that they were implicitly referencing a symbol from their own package, so if we are in a different package we need to convert their implicit import to an explicit import.
+				     (unless (gethash symbol jimport--ignore) ; Ignore if needed, e.g. if the import is from `java.lang.*'.
+				       (let ((our-package   (gethash nil our-imports))
+					     (their-package (gethash nil their-imports)))
+					 (when (and their-package ; If they have no package declaration, don't do anything.
+						    (not (equal our-package their-package)) ; We already implicitly import the symbol if we're in the same package.
+						    (char-uppercase-p (char-after)) ; Don't convert implicit imports to explicit imports when they don't start with an uppercase letter, since they are probably methods instead. By Java convention, only classes start with an uppercase letter.
+						    )
+					   (concat their-package "." symbol)))))
+				    ;; They have the import.
+				    ((equal our-import their-import)
+				     ;; Already imported, do nothing.
+				     nil)
+				    ;; We either don't have the import, or it's different than theirs.
+				    (t
+				     ;; In both cases, yank their import as well.
+				     their-import))))
 		      (when import
 			(puthash import t imported))))))
 	      (when (> (hash-table-count imported) 0)
