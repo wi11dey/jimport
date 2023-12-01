@@ -113,7 +113,8 @@
       (puthash "ThreadLocal" t set)
       (puthash "Throwable" t set)
       (puthash "Void" t set)
-      set)))
+      set))
+  "Imports that should not be automatically added, such as those from `java.lang.*'.")
 
 (defun jimport--imports ()
   (let ((imports (copy-hash-table (make-hash-table :test #'equal))))
