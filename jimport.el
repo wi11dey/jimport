@@ -171,7 +171,7 @@
 					     (their-package (gethash nil their-imports)))
 					 (when (and their-package ; If they have no package declaration, don't do anything.
 						    (not (equal our-package their-package)) ; We already implicitly import the symbol if we're in the same package.
-						    (looking-at-p (rx upper lower)) ; Don't convert implicit imports to explicit imports when they don't start with an uppercase letter, since they are probably methods instead. By Java convention, only classes start with an uppercase letter.
+						    (looking-at-p (rx upper lower)) ; Don't convert implicit imports to explicit imports when they don't start with an uppercase letter followed by a lowercase letter, since they are probably methods, constants, or variables instead. By Java convention, only classes are in CamelCaps.
 						    )
 					   (concat their-package "." symbol)))))
 				    ;; They have the import.
