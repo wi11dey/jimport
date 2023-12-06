@@ -130,79 +130,79 @@
     imports))
 
 (defun jimport--yank-handler (string-and-buffer)
-  (when (derived-mode-p 'java-mode)
-    (let ((start (point))
-	  end)
-      (insert (car string-and-buffer))
-      (setq end (point))
-      (unless (or (eq (cdr string-and-buffer) (current-buffer))
-		  (minibufferp))
-	(let (;; Current file:
-	      (our-imports (jimport--imports))
-	      ;; File being yanked from:
-	      (their-imports (with-current-buffer (cdr string-and-buffer)
-			       (jimport--imports)))
-	      (case-fold-search nil)
-	      (imported (make-hash-table :test #'equal)))
-	  (save-excursion
-	    (save-match-data
-	      (goto-char start)
-	      (while (re-search-forward (rx-let ((identifier (any (?A . ?Z)
-								  (?a . ?z)
-								  (?0 . ?9)
-								  ?$
-								  ?_)))
-					  (rx (intersection identifier (not (any (?0 . ?9))))
-					      (0+ identifier)))
-					end
-					t)
-		(save-excursion
-		  (goto-char (match-beginning 0))
-		  (unless (or (eq (preceding-char) ?.) ; Qualified name.
-			      (nth 8 (syntax-ppss)))
-		    (let* ((symbol (jimport--match-string-no-properties 0))
-			   (our-import   (gethash symbol our-imports))
-			   (their-import (gethash symbol their-imports))
-			   (import (cond
-				    ((not their-import)
-				     ;; Assume that they were implicitly referencing a symbol from their own package, so if we are in a different package we need to convert their implicit import to an explicit import.
-				     (unless (gethash symbol jimport--ignore) ; Ignore if needed, e.g. if the import is from `java.lang.*'.
-				       (let ((our-package   (gethash nil our-imports))
-					     (their-package (gethash nil their-imports)))
-					 (when (and their-package ; If they have no package declaration, don't do anything.
-						    (not (equal our-package their-package)) ; We already implicitly import the symbol if we're in the same package.
-						    (looking-at-p (rx upper lower)) ; Don't convert implicit imports to explicit imports when they don't start with an uppercase letter followed by a lowercase letter, since they are probably methods, constants, or variables instead. By Java convention, only classes are in CamelCaps.
-						    )
-					   (concat their-package "." symbol)))))
-				    ;; They have the import.
-				    ((equal our-import their-import)
-				     ;; Already imported, do nothing.
-				     nil)
-				    ;; We either don't have the import, or it's different than theirs.
-				    (t
-				     ;; In both cases, yank their import as well.
-				     their-import))))
-		      (when import
-			(puthash import t imported))))))
-	      (when (> (hash-table-count imported) 0)
-		(without-restriction
-		  (let ((imported-start (point))
-			imported-end)
-		    (if (re-search-backward jimport--import-regexp nil :noerror)
-			(progn
-			  (goto-char (match-end 0))
-			  (unless (match-beginning 1)
-			    (newline)))
-		      (forward-comment (buffer-size))
-		      (open-line 2))
-		    (maphash (lambda (import _value)
-			       (newline)
-			       (insert "import " import ";"))
-			     imported)
-		    (setq imported-end (point)
-			  yank-undo-function (lambda (start end)
-					       (delete-region start end)
-					       (delete-region imported-start imported-end)))))))))))))
+  (let ((start (point))
+	end)
+    (insert (car string-and-buffer))
+    (setq end (point))
+    (unless (or (not (derived-mode-p 'java-mode))
+		(eq (cdr string-and-buffer) (current-buffer))
+		(minibufferp))
+      (let (;; Current file:
+	    (our-imports (jimport--imports))
+	    ;; File being yanked from:
+	    (their-imports (with-current-buffer (cdr string-and-buffer)
+			     (jimport--imports)))
+	    (case-fold-search nil)
+	    (imported (make-hash-table :test #'equal)))
+	(save-excursion
+	  (save-match-data
+	    (goto-char start)
+	    (while (re-search-forward (rx-let ((identifier (any (?A . ?Z)
+								(?a . ?z)
+								(?0 . ?9)
+								?$
+								?_)))
+					(rx (intersection identifier (not (any (?0 . ?9))))
+					    (0+ identifier)))
+				      end
+				      t)
+	      (save-excursion
+		(goto-char (match-beginning 0))
+		(unless (or (eq (preceding-char) ?.) ; Qualified name.
+			    (nth 8 (syntax-ppss)))
+		  (let* ((symbol (jimport--match-string-no-properties 0))
+			 (our-import   (gethash symbol our-imports))
+			 (their-import (gethash symbol their-imports))
+			 (import (cond
+				  ((not their-import)
+				   ;; Assume that they were implicitly referencing a symbol from their own package, so if we are in a different package we need to convert their implicit import to an explicit import.
+				   (unless (gethash symbol jimport--ignore) ; Ignore if needed, e.g. if the import is from `java.lang.*'.
+				     (let ((our-package   (gethash nil our-imports))
+					   (their-package (gethash nil their-imports)))
+				       (when (and their-package ; If they have no package declaration, don't do anything.
+						  (not (equal our-package their-package)) ; We already implicitly import the symbol if we're in the same package.
+						  (looking-at-p (rx upper lower)) ; Don't convert implicit imports to explicit imports when they don't start with an uppercase letter followed by a lowercase letter, since they are probably methods, constants, or variables instead. By Java convention, only classes are in CamelCaps.
+						  )
+					 (concat their-package "." symbol)))))
+				  ;; They have the import.
+				  ((equal our-import their-import)
+				   ;; Already imported, do nothing.
+				   nil)
+				  ;; We either don't have the import, or it's different than theirs.
+				  (t
+				   ;; In both cases, yank their import as well.
+				   their-import))))
+		    (when import
+		      (puthash import t imported))))))
+	    (when (> (hash-table-count imported) 0)
+	      (without-restriction
+		(let ((imported-start (point))
+		      imported-end)
+		  (if (re-search-backward jimport--import-regexp nil :noerror)
+		      (progn
+			(goto-char (match-end 0))
+			(unless (match-beginning 1)
+			  (newline)))
+		    (forward-comment (buffer-size))
+		    (open-line 2))
+		  (maphash (lambda (import _value)
+			     (newline)
+			     (insert "import " import ";"))
+			   imported)
+		  (setq imported-end (point)
+			yank-undo-function (lambda (start end)
+					     (delete-region start end)
+					     (delete-region imported-start imported-end))))))))))))
 
 ;; TODO: don't add yank-handler on template args or comments
 (defun jimport--filter-buffer-substring (substring)
