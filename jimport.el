@@ -81,6 +81,7 @@
       (puthash "IllegalMonitorStateException" t set)
       (puthash "InheritableThreadLocal" t set)
       (puthash "Integer" t set)
+      (puthash "InterruptedException" t set)
       (puthash "Iterable" t set)
       (puthash "Long" t set)
       (puthash "Math" t set)
