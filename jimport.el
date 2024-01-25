@@ -109,6 +109,7 @@
       (puthash "String" t set)
       (puthash "StringBuffer" t set)
       (puthash "StringBuilder" t set)
+      (puthash "SuppressWarnings" t set)
       (puthash "System" t set)
       (puthash "System" t set)
       (puthash "Thread" t set)
